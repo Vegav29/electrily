@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel='preconnect' href='https://fonts.googleapis.com'>
+    <link href='https://fonts.googleapis.com/css2?family=Poppins:wght@800&display=swap' rel='stylesheet' type='text/css'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports Dashboard</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.3/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.4/jspdf.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const generateReportBtn = document.getElementById('generate-report');
+            const fromDateInput = document.getElementById('from-date');
+            const toDateInput = document.getElementById('to-date');
+            const frequencySelect = document.getElementById('frequency');
+            const reportTableBody = document.getElementById('report-table-body');
+            const generateCsvBtn = document.getElementById('generate-csv');
+            const generatePdfBtn = document.getElementById('generate-pdf');
+
+            // Initialize flatpickr for date inputs with the correct format
+            flatpickr(fromDateInput, { dateFormat: 'Y/m/d' });
+            flatpickr(toDateInput, { dateFormat: 'Y/m/d' });
+
+            generateReportBtn.addEventListener('click', async () => {
+                try {
+                    const fromDate = fromDateInput.value;
+                    const toDate = toDateInput.value;
+                    const frequency = frequencySelect.value;
+
+                    const response = await fetch(`/data?from=${fromDate}&to=${toDate}&frequency=${frequency}`);
+                    const data = await response.json();
+
+                    // Clear previous data
+                    reportTableBody.innerHTML = '';
+
+                    // Populate table with fetched data
+                    data.forEach(entry => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${entry['License Plate']}</td>
+                            <td>${entry.Make}</td>
+                            <td>${entry.VIN}</td>
+                            <td>${entry.Model}</td>
+                            <td>${entry.Type}</td>
+                            <td>${entry.Date}</td>
+                            <td>${entry['Miles Driven']}</td>
+                        `;
+                        reportTableBody.appendChild(row);
+                    });
+
+                    // Show the download options
+                    generateReportBtn.style.display = 'none';
+                    generateCsvBtn.style.display = 'inline-block';
+                    generatePdfBtn.style.display = 'inline-block';
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                }
+            });
+
+            // Function to handle generating CSV
+            function generateCsv() {
+                let csv_data = [];
+                const rows = reportTableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cols = row.querySelectorAll('td');
+                    const csvrow = [];
+                    cols.forEach(col => {
+                        csvrow.push(col.textContent);
+                    });
+                    csv_data.push(csvrow.join(","));
+                });
+                csv_data = csv_data.join('\n');
+                downloadCSVFile(csv_data);
+            }
+
+            // Function to handle generating PDF
+            function generatePdf() {
+                html2canvas(document.getElementById('report-table')).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF();
+                    pdf.addImage(imgData, 'PNG', 0, 0);
+                    pdf.save("Table.pdf");
+                });
+            }
+
+            // Event listener for the "Download CSV" button
+            generateCsvBtn.addEventListener('click', generateCsv);
+
+            // Event listener for the "Download PDF" button
+            generatePdfBtn.addEventListener('click', generatePdf);
+
+            function downloadCSVFile(csv_data) {
+                const CSVFile = new Blob([csv_data], { type: "text/csv" });
+                const temp_link = document.createElement('a');
+                temp_link.download = "report_data.csv";
+                const url = window.URL.createObjectURL(CSVFile);
+                temp_link.href = url;
+                temp_link.style.display = "none";
+                document.body.appendChild(temp_link);
+                temp_link.click();
+                document.body.removeChild(temp_link);
+            }
+        });
+    </script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-image: url('images/pixlr-image-generator-660482854035206ab551b1d6.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="user-profile">
+            <img src="images/profile.jpg" alt="Profile Picture">
+            <div class="dropdown">
+                <button class="dropbtn">Username</button>
+                <div class="dropdown-content">
+                    <a href="#">Profile</a>
+                    <a href="#">Settings</a>
+                    <a href="#">Logout</a>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex;">
+            <nav class="sidebar">
+                <ul>
+                    <li><a href="#"><img src="../images/IMG_8101-modified.png" width="100px"/></a></li>
+                    <li><a href="#">Overview</a></li>
+                    <li><a href="#">Vehicles</a></li>
+                    <li><a href="#">Chargers</a></li>
+                    <li><a href="#">Drivers</a></li>
+                    <li><a href="#">Schedules</a></li>
+                    <li><a href="#">Reports</a></li>
+                    <li><a href="#">Admin Panel</a></li>
+                </ul>
+            </nav>
+            <main class="main-content">
+                <header>
+                    <h1>Reports</h1>
+                </header>
+                <div style="margin-bottom: 20px;">
+                    
+                    <label for="report-type">Report Type:</label>
+                    <select id="report-type">
+                     <option value="total-miles">Total Miles Driven</option>
+                     <option value="energy-consumption">Energy Consumption</option>
+                    <option value="cost-analysis">Cost Analysis</option>
+                    &nbsp;&nbsp;
+                    <label for="from-date">From:</label>
+                    <input type="text" id="from-date" placeholder="Select From Date">
+                    <label for="to-date">To:</label>
+                    <input type="text" id="to-date" placeholder="Select To Date">
+
+                    <select id="frequency">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                    
+                
+                    
+                    <button id="generate-report">Generate Report</button>
+                    
+                        <button id="generate-csv" style="display: none;">Download CSV</button>
+                        <button id="generate-pdf" style="display: none;">Download PDF</button>
+                    
+                </div>
+                <table id="report-table">
+                    <thead>
+                        <tr>
+                            <th>License Plate</th>
+                            <th>Make</th>
+                            <th>VIN</th>
+                            <th>Model</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Miles Driven</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-table-body">
+                        
+                    </tbody>
+                </table>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
+
